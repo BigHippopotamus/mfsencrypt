@@ -5,5 +5,16 @@ project(MultiFileSuperencryption
     LANGUAGES C
 )
 
-add_executable(mfsencrypt mfsencrypt.c)
+set(SOURCES
+    src/mfsencrypt.c
+    src/field_reposition.c
+)
+
+add_executable(mfsencrypt ${SOURCES})
+
+find_package(OpenSSL REQUIRED)
+target_link_libraries(mfsencrypt
+    OpenSSL::SSL
+    OpenSSL::Crypto
+)
 
