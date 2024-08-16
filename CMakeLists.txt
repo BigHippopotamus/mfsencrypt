@@ -8,6 +8,7 @@ project(MultiFileSuperencryption
 set(SOURCES
     src/mfsencrypt.c
     src/field_reposition.c
+    src/eval_function.c
 )
 
 add_executable(mfsencrypt ${SOURCES})

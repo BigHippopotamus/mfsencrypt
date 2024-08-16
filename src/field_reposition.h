@@ -3,7 +3,7 @@
 
 #include <openssl/bn.h>
 
-unsigned long field_reposition(BIGNUM ***shifted_points,
+unsigned long field_reposition(BIGNUM **shifted_points,
                                BIGNUM **points, 
                                int count,
                                BIGNUM *field_modulus,
