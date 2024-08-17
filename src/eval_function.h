@@ -3,12 +3,12 @@
 
 #include <openssl/bn.h>
 
-unsigned long evaluate_function(BIGNUM *r,
-                                BIGNUM **function,
-                                int function_size,
-                                BIGNUM *x,
-                                BIGNUM *modulus,
-                                BN_RECP_CTX *modulus_context,
-                                BN_CTX *context);
+int evaluate_function(BIGNUM *r,
+                      BIGNUM **function,
+                      int function_size,
+                      BIGNUM *x,
+                      BIGNUM *modulus,
+                      BN_RECP_CTX *modulus_context,
+                      BN_CTX *context);
 
 #endif

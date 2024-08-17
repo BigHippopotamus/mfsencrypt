@@ -2,13 +2,13 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
-unsigned long evaluate_function(BIGNUM *r,
-                                BIGNUM **function,
-                                int function_size,
-                                BIGNUM *x,
-                                BIGNUM *modulus,
-                                BN_RECP_CTX *modulus_context,
-                                BN_CTX *context) {
+int evaluate_function(BIGNUM *r,
+                      BIGNUM **function,
+                      int function_size,
+                      BIGNUM *x,
+                      BIGNUM *modulus,
+                      BN_RECP_CTX *modulus_context,
+                      BN_CTX *context) {
     BIGNUM *accumulator_a = NULL, *accumulator_b = NULL;
     BIGNUM *temp = NULL, *alt_result = NULL;
 
@@ -76,7 +76,7 @@ unsigned long evaluate_function(BIGNUM *r,
     BN_free(accumulator_a);
     BN_free(accumulator_b);
 
-    return 0;
+    return 1;
 
 handle_error:
     BN_free(temp);
@@ -86,7 +86,5 @@ handle_error:
     BN_free(accumulator_a);
     BN_free(accumulator_b);
 
-    int last_error = 0;
-    while (last_error = ERR_get_error());
-    return last_error;
+    return 0;
 }

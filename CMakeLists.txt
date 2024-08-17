@@ -7,7 +7,7 @@ project(MultiFileSuperencryption
 
 set(SOURCES
     src/mfsencrypt.c
-    src/field_reposition.c
+    src/build_generator.c
     src/eval_function.c
 )
 

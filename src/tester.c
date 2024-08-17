@@ -1,4 +1,4 @@
-#include "field_reposition.h"
+#include "build_generator.h"
 #include "eval_function.h"
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
@@ -8,6 +8,7 @@
 
 unsigned long test_field_reposition(OSSL_LIB_CTX *lib_context) {
     BIGNUM **points = OPENSSL_malloc(3 * sizeof(*points));
+    for (int i = 0; i < 3; i++) points[i] = NULL;
     BN_dec2bn(&points[0], "127");
     BN_dec2bn(&points[1], "255");
     BN_dec2bn(&points[2], "31");
@@ -30,7 +31,7 @@ unsigned long test_field_reposition(OSSL_LIB_CTX *lib_context) {
     );
 
     printf("Return value: %lu\n", val);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; val && i < 3; i++) {
         char *shifted = BN_bn2dec(shifted_points[i]);
         printf("%s\n", shifted);
         OPENSSL_free(shifted);
@@ -49,16 +50,16 @@ unsigned long test_field_reposition(OSSL_LIB_CTX *lib_context) {
 }
 
 unsigned long test_eval_function(OSSL_LIB_CTX *lib_context) {
-    BIGNUM **points = OPENSSL_malloc(3 * sizeof(*points));
-    BN_dec2bn(&points[0], "20");
-    BN_dec2bn(&points[1], "5");
-    BN_dec2bn(&points[2], "2");
+    BIGNUM **points = OPENSSL_zalloc(3 * sizeof(*points));
+    BN_dec2bn(&points[0], "1");
+    BN_dec2bn(&points[1], "-4");
+    BN_dec2bn(&points[2], "1");
 
     BIGNUM *fm = NULL;
     BN_dec2bn(&fm, "31");
 
     BIGNUM *x = NULL;
-    BN_dec2bn(&x, "5");
+    BN_dec2bn(&x, "2");
 
     BIGNUM *result = BN_new();
 
@@ -93,4 +94,45 @@ unsigned long test_eval_function(OSSL_LIB_CTX *lib_context) {
     OPENSSL_free(points);
 
     return 0;
+}
+
+unsigned long test_build_generator(OSSL_LIB_CTX *lib_context) {
+    BIGNUM **function = OPENSSL_zalloc(4 * sizeof(*function));
+    BIGNUM **x = OPENSSL_zalloc(4 * sizeof(*x));
+    BIGNUM **y = OPENSSL_zalloc(4 * sizeof(*y));
+    for (int i = 0; i < 3; i++) {
+        x[i] = NULL; y[i] = NULL;
+        function[i] = BN_new();
+    }
+    BN_dec2bn(&x[0], "0"); BN_dec2bn(&y[0], "1");
+    BN_dec2bn(&x[1], "2"); BN_dec2bn(&y[1], "-3");
+    BN_dec2bn(&x[2], "5"); BN_dec2bn(&y[2], "6");
+
+    BIGNUM *modulus = NULL;
+    BN_dec2bn(&modulus, "7");
+
+    unsigned long val = build_generator(
+        function,
+        x,
+        y,
+        3,
+        modulus,
+        lib_context
+    );
+
+    printf("Return value = %lun", val);
+    for (int i = 0; i < 3; i++) {
+        char *shifted = BN_bn2dec(function[i]);
+        printf("%s\n", shifted);
+        OPENSSL_free(shifted);
+    }
+
+    BN_free(modulus);
+
+    for (int i = 0; i < 3; i++) {
+        BN_free(x[i]); BN_free(y[i]); BN_free(function[i]);
+    }
+    OPENSSL_free(x);
+    OPENSSL_free(y);
+    OPENSSL_free(function);
 }

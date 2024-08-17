@@ -1,4 +1,3 @@
-#include "field_reposition.h"
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -13,8 +12,9 @@ int main() {
 
     if (!lib_context) goto handle_error;
 
-    //test_field_reposition(lib_context);
+    test_field_reposition(lib_context);
     test_eval_function(lib_context);
+    test_build_generator(lib_context);
 
     OSSL_LIB_CTX_free(lib_context);
 
