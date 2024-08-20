@@ -13,6 +13,11 @@ set(SOURCES
 
 add_executable(mfsencrypt ${SOURCES})
 
+target_include_directories(mfsencrypt
+    PRIVATE
+        include
+)
+
 find_package(OpenSSL REQUIRED)
 target_link_libraries(mfsencrypt
     OpenSSL::SSL

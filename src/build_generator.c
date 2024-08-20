@@ -48,7 +48,14 @@ int field_reposition(BIGNUM **shifted_points,
         BIGNUM *shift_max = less_than ? 
             modulus_quotient_plus_one : 
             modulus_quotient;
-        BN_rand_range(shift_amt, shift_max);
+
+        success = BN_rand_range_ex(
+            shift_amt, 
+            shift_max,
+            BN_num_bits(shift_max),
+            context
+        );
+        if (!success) goto handle_error_fr;
 
         success = BN_mul(shift_amt, shift_amt, value_modulus, context);
         if (!success) goto handle_error_fr;
@@ -75,11 +82,6 @@ handle_error_fr:
     BN_free(modulus_quotient);
 
     BN_CTX_free(context);
-
-    for (int i = 0; i < count; i++) {
-        BN_free(shifted_points[i]);
-        shifted_points[i] = NULL;
-    }
 
     return 0;
 }
@@ -250,6 +252,17 @@ int build_generator(BIGNUM **generator,
                     if (!success) goto handle_error_bg;
                 }
             }
+        }
+    }
+
+    // Reduce the bits used to store the generator
+    for (int i = 0; i < count; i++) {
+        success = BN_sub(temp_a, generator[i], modulus);
+        if (!success) goto handle_error_bg;
+
+        if (BN_num_bits(temp_a) < BN_num_bits(generator[i])) {
+            success = (BN_copy(generator[i], temp_a) != NULL);
+            if (!success) goto handle_error_bg;
         }
     }
 

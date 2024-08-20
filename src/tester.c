@@ -109,7 +109,7 @@ unsigned long test_build_generator(OSSL_LIB_CTX *lib_context) {
     BN_dec2bn(&x[2], "5"); BN_dec2bn(&y[2], "6");
 
     BIGNUM *modulus = NULL;
-    BN_dec2bn(&modulus, "7");
+    BN_dec2bn(&modulus, "17");
 
     unsigned long val = build_generator(
         function,
@@ -120,7 +120,7 @@ unsigned long test_build_generator(OSSL_LIB_CTX *lib_context) {
         lib_context
     );
 
-    printf("Return value = %lun", val);
+    printf("Return value = %lu\n", val);
     for (int i = 0; i < 3; i++) {
         char *shifted = BN_bn2dec(function[i]);
         printf("%s\n", shifted);

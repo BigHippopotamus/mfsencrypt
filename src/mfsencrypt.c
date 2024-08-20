@@ -1,5 +1,6 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
+#include <openssl/rand.h>
 #include <openssl/err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +8,8 @@
 #include "tester.c"
 
 int main() {
+    while (!RAND_poll());
+
     OSSL_LIB_CTX *lib_context;
     lib_context = OSSL_LIB_CTX_new();
 
