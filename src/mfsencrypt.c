@@ -18,6 +18,7 @@ int main() {
     test_field_reposition(lib_context);
     test_eval_function(lib_context);
     test_build_generator(lib_context);
+    test_encode_decode(lib_context);
 
     OSSL_LIB_CTX_free(lib_context);
 

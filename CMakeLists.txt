@@ -9,6 +9,7 @@ set(SOURCES
     src/mfsencrypt.c
     src/build_generator.c
     src/eval_function.c
+    src/encode_decode.c
 )
 
 add_executable(mfsencrypt ${SOURCES})

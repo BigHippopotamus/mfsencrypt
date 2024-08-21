@@ -2,20 +2,15 @@
 #include "eval_function.h"
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
-#include <openssl/err.h>
 
 int field_reposition(BIGNUM **shifted_points,
                      BIGNUM **points, 
                      int count,
                      BIGNUM *field_modulus,
                      BIGNUM *value_modulus,
-                     OSSL_LIB_CTX *lib_context) {
-    BN_CTX *context = NULL;
+                     BN_CTX *context) {
     BIGNUM *modulus_quotient = NULL, *modulus_remainder = NULL;
     BIGNUM *modulus_quotient_plus_one = NULL, *shift_amt = NULL;
-
-    context = BN_CTX_new_ex(lib_context);
-    if (!context) goto handle_error_fr;
 
     int success;
     
@@ -70,8 +65,6 @@ int field_reposition(BIGNUM **shifted_points,
     BN_free(modulus_remainder);
     BN_free(modulus_quotient);
 
-    BN_CTX_free(context);
-
     return 1;
 
 handle_error_fr:
@@ -81,8 +74,6 @@ handle_error_fr:
     BN_free(modulus_remainder);
     BN_free(modulus_quotient);
 
-    BN_CTX_free(context);
-
     return 0;
 }
 
@@ -91,8 +82,7 @@ int build_generator(BIGNUM **generator,
                     BIGNUM **y,
                     int count,
                     BIGNUM *modulus,
-                    OSSL_LIB_CTX *lib_context) {
-    BN_CTX *context = NULL;
+                    BN_CTX *context) {
     BN_RECP_CTX *modulus_context = NULL;
     BIGNUM **support_function = NULL;
     BIGNUM *value_difference = NULL, *lambda = NULL;
@@ -104,9 +94,6 @@ int build_generator(BIGNUM **generator,
     if (!success) goto handle_error_bg;
 
     if (count <= 1) return 0;
-
-    context = BN_CTX_new_ex(lib_context);
-    if (!context) goto handle_error_bg;
 
     modulus_context = BN_RECP_CTX_new();
     if (!modulus_context) goto handle_error_bg;
@@ -281,7 +268,6 @@ int build_generator(BIGNUM **generator,
     OPENSSL_free(support_function);
 
     BN_RECP_CTX_free(modulus_context);
-    BN_CTX_free(context);
 
     return 1;
 
@@ -301,7 +287,6 @@ handle_error_bg:
     OPENSSL_free(support_function);
 
     BN_RECP_CTX_free(modulus_context);
-    BN_CTX_free(context);
 
     return 0;
 }

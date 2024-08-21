@@ -1,8 +1,7 @@
 #include "eval_function.h"
 #include <openssl/bn.h>
-#include <openssl/err.h>
 
-int evaluate_function(BIGNUM *r,
+int evaluate_function(BIGNUM *result,
                       BIGNUM **function,
                       int function_size,
                       BIGNUM *x,
@@ -12,7 +11,7 @@ int evaluate_function(BIGNUM *r,
     BIGNUM *accumulator_a = NULL, *accumulator_b = NULL;
     BIGNUM *temp = NULL, *alt_result = NULL;
 
-    BN_zero(r);
+    BN_zero(result);
 
     int success;
 
@@ -39,8 +38,8 @@ int evaluate_function(BIGNUM *r,
         );
         if (!success) goto handle_error;
 
-        BIGNUM *add_from = (i % 2 == 0) ? r : alt_result;
-        BIGNUM *add_to = (i % 2 == 0) ? alt_result : r;
+        BIGNUM *add_from = (i % 2 == 0) ? result : alt_result;
+        BIGNUM *add_to = (i % 2 == 0) ? alt_result : result;
 
         success = BN_mod_add(
             add_to,
@@ -65,7 +64,7 @@ int evaluate_function(BIGNUM *r,
     }
 
     if (function_size % 2 != 0) {
-        success = (BN_copy(r, alt_result) != NULL);
+        success = (BN_copy(result, alt_result) != NULL);
         if (!success) goto handle_error;
     }
 

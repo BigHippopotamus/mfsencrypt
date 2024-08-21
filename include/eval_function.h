@@ -3,7 +3,7 @@
 
 #include <openssl/bn.h>
 
-int evaluate_function(BIGNUM *r,
+int evaluate_function(BIGNUM *result,
                       BIGNUM **function,
                       int function_size,
                       BIGNUM *x,
