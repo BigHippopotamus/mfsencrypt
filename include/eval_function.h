@@ -4,7 +4,7 @@
 #include <openssl/bn.h>
 
 int evaluate_function(BIGNUM *result,
-                      BIGNUM **function,
+                      BIGNUM *function[],
                       int function_size,
                       BIGNUM *x,
                       BIGNUM *modulus,

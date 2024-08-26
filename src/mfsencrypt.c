@@ -15,10 +15,15 @@ int main() {
 
     if (!lib_context) goto handle_error;
 
+/*
     test_field_reposition(lib_context);
     test_eval_function(lib_context);
     test_build_generator(lib_context);
     test_encode_decode(lib_context);
+*/
+
+    test_merge_files(lib_context);
+    test_regenerate_file(lib_context, 0);
 
     OSSL_LIB_CTX_free(lib_context);
 

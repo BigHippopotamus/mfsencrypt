@@ -1,13 +1,14 @@
 #include "build_generator.h"
 #include "eval_function.h"
 #include "encode_decode.h"
+#include "convert_file.h"
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-unsigned long test_field_reposition(OSSL_LIB_CTX *lib_context) {
+int test_field_reposition(OSSL_LIB_CTX *lib_context) {
     printf("FIELD REPOSITION TEST:\n");
     BIGNUM **points = OPENSSL_malloc(3 * sizeof(*points));
     for (int i = 0; i < 3; i++) points[i] = NULL;
@@ -55,7 +56,7 @@ unsigned long test_field_reposition(OSSL_LIB_CTX *lib_context) {
     return 0;
 }
 
-unsigned long test_eval_function(OSSL_LIB_CTX *lib_context) {
+int test_eval_function(OSSL_LIB_CTX *lib_context) {
     printf("EVALUATE FUNCTION TEST:\n");
     BIGNUM **points = OPENSSL_zalloc(3 * sizeof(*points));
     BN_dec2bn(&points[0], "1");
@@ -104,7 +105,7 @@ unsigned long test_eval_function(OSSL_LIB_CTX *lib_context) {
     return 0;
 }
 
-unsigned long test_build_generator(OSSL_LIB_CTX *lib_context) {
+int test_build_generator(OSSL_LIB_CTX *lib_context) {
     printf("BUILD GENERATOR TEST:\n");
     BIGNUM **generator = OPENSSL_zalloc(4 * sizeof(*generator));
     BIGNUM **x = OPENSSL_zalloc(4 * sizeof(*x));
@@ -152,7 +153,7 @@ unsigned long test_build_generator(OSSL_LIB_CTX *lib_context) {
     return 0;
 }
 
-unsigned long test_encode_decode(OSSL_LIB_CTX *lib_context) {
+int test_encode_decode(OSSL_LIB_CTX *lib_context) {
     printf("ENCODE/DECODE TEST:\n");
     BIGNUM **generator = OPENSSL_zalloc(3 * sizeof(*generator));
     BIGNUM **x = OPENSSL_zalloc(3 * sizeof(*x));
@@ -227,5 +228,42 @@ unsigned long test_encode_decode(OSSL_LIB_CTX *lib_context) {
     OPENSSL_free(y);
     OPENSSL_free(generator);
 
+    return 0;
+}
+
+int test_merge_files(OSSL_LIB_CTX *lib_context) {
+    char *infiles[] = 
+        {"../Images/1.png", "../Images/2.png", "../Images/3.png"};
+    char *outfile = "../Image.mfsn";
+
+    char *keys[] = {"apple", "banana", "orange"};
+    int count = 3;
+    int extra_padding = 0;
+
+    int val = merge_files(
+        infiles,
+        outfile,
+        keys,
+        count,
+        extra_padding,
+        lib_context
+    );
+    printf("Returned with value %d\n", val);
+
+    return 0;
+}
+
+int test_regenerate_file(OSSL_LIB_CTX *lib_context, int num) {
+    char *infile = "../Image.mfsn";
+    char *outfile = "../regen.png";
+    char *keys[] = {"apple", "banana", "orange"};
+
+    int val = regenerate_file(
+        infile,
+        outfile,
+        keys[num],
+        lib_context
+    );
+    printf("Returned with value %d\n", val);
     return 0;
 }
