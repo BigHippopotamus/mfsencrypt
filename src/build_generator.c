@@ -3,6 +3,8 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 
+#define RAND_STRENGTH 256
+
 int field_reposition(BIGNUM *shifted_points[],
                      BIGNUM *points[],
                      int count,
@@ -49,7 +51,7 @@ int field_reposition(BIGNUM *shifted_points[],
         success = BN_rand_range_ex(
             shift_amt, 
             shift_max,
-            2 * BN_num_bits(shift_max),
+            RAND_STRENGTH,
             context
         );
         if (!success) goto handle_error;

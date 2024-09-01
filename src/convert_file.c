@@ -17,7 +17,9 @@
 #define HASH_SIZE 32
 #define FIELD_SIZE_BYTES 260
 
-void calculate_lps(char *pattern, int size, int *lps) {
+#define RAND_STRENGTH 256
+
+void calculate_lps(unsigned char *pattern, int size, unsigned int *lps) {
     lps[0] = 0;
 
     int i = 1, prefix_size = 0;
@@ -37,10 +39,10 @@ void calculate_lps(char *pattern, int size, int *lps) {
     }
 }
 
-int stream_kmp(char *needle,
-               int lps[],
+int stream_kmp(unsigned char *needle,
+               unsigned int lps[],
                int needle_size,
-               char *haystack,
+               unsigned char *haystack,
                int haystack_size,
                int *progress) {
     for (int i = 0; i < haystack_size; i++) {
@@ -63,20 +65,23 @@ int stream_kmp(char *needle,
 int merge_files(char *infiles[],
                 char *outfile,
                 char *keys[],
-                int count,
+                int real_count,
                 int extra_padding,
+                int fake_count,
                 OSSL_LIB_CTX *lib_context) {
     int return_value = 1;
+    int count = real_count + fake_count;
 
-    FILE **inputs;
+    FILE **inputs = NULL;
     FILE *output = NULL;
-    int *filesizes;
+    int *filesizes = NULL;
     int max_size = 0;
-    char bignum_bytes_buffer[FIELD_SIZE_BYTES];
+    unsigned char bignum_bytes_buffer[FIELD_SIZE_BYTES];
 
-    BIGNUM **x;
-    BIGNUM **y;
-    BIGNUM **generator;
+    BN_CTX *context = NULL;
+    BIGNUM **x = NULL;
+    BIGNUM **y = NULL;
+    BIGNUM **generator = NULL;
     BIGNUM *field_mod = NULL, *value_mod = NULL;
 
     int *padding = NULL;
@@ -88,14 +93,14 @@ int merge_files(char *infiles[],
     int *kmp_match_status = NULL;
     int *hash_used = NULL;
 
-    unsigned char (*bytes)[BLOCK_SIZE] = NULL;
+    unsigned char bytes[BLOCK_SIZE] = {0};
 
     int success;
 
-    inputs = calloc(count, sizeof(*inputs));
+    inputs = calloc(real_count, sizeof(*inputs));
     if (!inputs) goto handle_error;
 
-    filesizes = calloc(count, sizeof(*filesizes));
+    filesizes = calloc(real_count, sizeof(*filesizes));
     if (!inputs) goto handle_error;
 
     // Initialize BIGNUMs
@@ -126,7 +131,7 @@ int merge_files(char *infiles[],
     if (!success) goto handle_error;
 
     // Calculate the size of each file
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < real_count; i++) {
         inputs[i] = fopen(infiles[i], "rb");
         if (!inputs[i]) goto handle_error;
 
@@ -139,23 +144,23 @@ int merge_files(char *infiles[],
     }
 
     // Calculate the number of bytes of padding needed for each file
-    padding = calloc(count, sizeof(*padding));
+    padding = calloc(real_count, sizeof(*padding));
     if (!padding) goto handle_error;
 
     int required_padding = extra_padding * BLOCK_SIZE + HASH_SIZE +
         (BLOCK_SIZE - max_size % BLOCK_SIZE) % BLOCK_SIZE;
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < real_count; i++) {
         padding[i] = (max_size - filesizes[i]) + required_padding;
     }
 
     // Calculate hashes of the keys
-    key_hash = calloc(count, sizeof(*key_hash));
+    key_hash = calloc(real_count, sizeof(*key_hash));
     if (!key_hash) goto handle_error;
 
-    kmp_lps = calloc(count, sizeof(*kmp_lps));
+    kmp_lps = calloc(real_count, sizeof(*kmp_lps));
     if (!kmp_lps) goto handle_error;
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < real_count; i++) {
         // Padding hash
         success = EVP_Digest(
             keys[i],
@@ -188,9 +193,35 @@ int merge_files(char *infiles[],
         if (!success) goto handle_error;
     }
 
+    context = BN_CTX_new_ex(lib_context);
+    if (!context) goto handle_error;
+
+    for (int i = real_count; i < count; i++) {
+        success = BN_rand_range_ex(
+            x[i],
+            field_mod,
+            RAND_STRENGTH,
+            context
+        );
+
+        // Check if it is a duplicate
+        bool is_duplicate = false;
+        for (int j = 0; j < i; j++) {
+            int cmp = BN_cmp(x[i], x[j]);
+            if (cmp == 0) {
+                is_duplicate = true;
+                break;
+            }
+        }
+
+        if (is_duplicate) {
+            i--;
+            continue;
+        }
+    }
+
     // Generate the output
     uint32_t blocks = (filesizes[0] + padding[0]) / BLOCK_SIZE;
-    bytes = calloc(count, sizeof(*bytes));
     output = fopen(outfile, "wb");
 
     uint32_t header[] = {count, blocks};
@@ -200,11 +231,11 @@ int merge_files(char *infiles[],
         (fwrite(header, sizeof(header[0]), header_len, output) == header_len);
     if (!success) goto handle_error;
 
-    kmp_match_status = calloc(count, sizeof(*kmp_match_status));
-    hash_used = calloc(count, sizeof(*hash_used));
+    kmp_match_status = calloc(real_count, sizeof(*kmp_match_status));
+    hash_used = calloc(real_count, sizeof(*hash_used));
     for (int i = 0; i < blocks; i++) {
         // Generate data/padding to be used
-        for (int j = 0; j < count; j++) {
+        for (int j = 0; j < real_count; j++) {
             int old_status = kmp_match_status[j];
             unsigned int rand_bytes, hash_bytes, data_bytes;
 
@@ -235,9 +266,9 @@ int merge_files(char *infiles[],
             if (rand_bytes > 0) {
                 success = RAND_bytes_ex(
                     lib_context,
-                    bytes[j],
+                    bytes,
                     rand_bytes,
-                    2 * rand_bytes
+                    RAND_STRENGTH
                 );
                 if (!success) goto handle_error;
 
@@ -246,7 +277,7 @@ int merge_files(char *infiles[],
 
             if (hash_bytes > 0) {
                 memcpy(
-                    bytes[j] + used_bytes,
+                    bytes + used_bytes,
                     key_hash[j] + hash_used[j],
                     hash_bytes
                 );
@@ -256,8 +287,8 @@ int merge_files(char *infiles[],
 
             if (data_bytes > 0) {
                 success = (fread(
-                    bytes[j] + used_bytes,
-                    sizeof(bytes[j][0]),
+                    bytes + used_bytes,
+                    sizeof(bytes[0]),
                     data_bytes,
                     inputs[j]
                 ) == data_bytes);
@@ -272,7 +303,7 @@ int merge_files(char *infiles[],
                     key_hash[j],
                     kmp_lps[j],
                     HASH_SIZE,
-                    bytes[j],
+                    bytes,
                     BLOCK_SIZE,
                     &kmp_match_status[j]
                 );
@@ -288,14 +319,33 @@ int merge_files(char *infiles[],
             filesizes[j] -= data_bytes;
 
             success = (BN_bin2bn(
-                bytes[j],
+                bytes,
+                BLOCK_SIZE,
+                y[j]
+            ) != NULL);
+            if (!success) goto handle_error;
+        }
+
+        for (int j = real_count; j < count; j++) {
+            int rand_bytes = BLOCK_SIZE;
+
+            success = RAND_bytes_ex(
+                lib_context,
+                bytes,
+                BLOCK_SIZE,
+                RAND_STRENGTH
+            );
+            if (!success) goto handle_error;
+
+            success = (BN_bin2bn(
+                bytes,
                 BLOCK_SIZE,
                 y[j]
             ) != NULL);
             if (!success) goto handle_error;
         }
         
-        success = encode_data(
+        success = encode_block(
             generator,
             x,
             y,
@@ -336,8 +386,6 @@ handle_error:
     return_value = 0;
 
 cleanup:
-    free(bytes);
-
     free(kmp_match_status);
     free(hash_used);
 
@@ -346,12 +394,21 @@ cleanup:
 
     free(padding);
 
-    for (int i = 0; i < count; i++) {
+    BN_CTX_free(context);
+
+    for (int i = 0; i < real_count; i++) {
         BN_free(x[i]);
         BN_free(y[i]);
         BN_free(generator[i]);
         if (inputs[i]) fclose(inputs[i]);
     }
+
+    for (int i = real_count; i < count; i++) {
+        BN_free(x[i]);
+        BN_free(y[i]);
+        BN_free(generator[i]);
+    }
+
     if (output) fclose(output);
 
     BN_free(field_mod);
@@ -429,7 +486,7 @@ int regenerate_file(char *infile,
     if (!y) goto handle_error;
 
     unsigned char key_hash[HASH_SIZE];
-    int kmp_lps[HASH_SIZE];
+    unsigned int kmp_lps[HASH_SIZE];
     unsigned char sha_temp[HASH_SIZE];
 
     // Calculate hashes
@@ -496,7 +553,7 @@ int regenerate_file(char *infile,
             BN_set_negative(generator[j], coeff_size < 0);
         }
 
-        success = decode_data(
+        success = decode_block(
             y,
             generator,
             x,
@@ -543,15 +600,6 @@ int regenerate_file(char *infile,
             ) == BLOCK_SIZE);
             if (!success) goto handle_error;
         }
-        /*/
-            success = (fwrite(
-                bytes,
-                sizeof(bytes[0]),
-                BLOCK_SIZE,
-                output
-            ) == BLOCK_SIZE);
-            if (!success) goto handle_error;
-        //*/
     }
 
     goto cleanup;

@@ -6,8 +6,9 @@
 int merge_files(char *infiles[],
                 char *outfile,
                 char *keys[],
-                int count,
+                int real_count,
                 int extra_padding,
+                int fake_count,
                 OSSL_LIB_CTX *lib_context);
 
 int regenerate_file(char *infile,

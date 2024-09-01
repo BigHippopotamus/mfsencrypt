@@ -10,12 +10,12 @@
 #include <errno.h>
 
 typedef enum Mode {
-    NONE,
     ENCRYPT,
     DECRYPT,
     KEY,
     OUTPUT,
-    PADDING
+    PADDING,
+    FAKES
 } Mode;
 
 int main(int argc, char *argv[]) {
@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     int keys = -1;
     int outfile = -1;
     int padding = 0;
+    int fakes = 0;
 
     int success;
 
@@ -85,6 +86,34 @@ int main(int argc, char *argv[]) {
             } else {
                 valid = false;
                 mode = PADDING;
+            }
+        } else if (strcmp(argv[i], "-f") == 0) {
+            if (mode != OUTPUT && mode != PADDING) {
+                break;
+            } else if (action == DECRYPT) {
+                fprintf(
+                    stderr,
+                    "%s: Cannot insert fakes when decrypting\n",
+                    argv[0]
+                );
+                exit(EXIT_FAILURE);
+            } else if (outfile == -1) {
+                fprintf(
+                    stderr,
+                    "%s: No output file given\n",
+                    argv[0]
+                );
+                exit(EXIT_FAILURE);
+            } else if (mode == PADDING && !valid) {
+                fprintf(
+                    stderr,
+                    "%s: Padding count not given\n",
+                    argv[0]
+                );
+                exit(EXIT_FAILURE);
+            } else {
+                valid = false;
+                mode = FAKES;
             }
         } else {
             switch (mode) {
@@ -177,6 +206,47 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 break;
+
+                case FAKES: {
+                    if (valid) {
+                        fprintf(
+                            stderr,
+                            "%s: Too many arguments for FAKES\n",
+                            argv[0]
+                        );
+                        exit(EXIT_FAILURE);
+                    } else {
+                        char *is_num;
+                        long converted = strtol(argv[i], &is_num, 10);
+
+                        if (*is_num != '\0') {
+                            fprintf(
+                                stderr,
+                                "%s: Invalid value for FAKES\n",
+                                argv[0]
+                            );
+                            exit(EXIT_FAILURE);
+                        } else if (converted < 0) {
+                            fprintf(
+                                stderr,
+                                "%s: Value of FAKES cannot be negative\n",
+                                argv[0]
+                            );
+                            exit(EXIT_FAILURE);
+                        } else if (converted > INT_MAX) {
+                            fprintf(
+                                stderr,
+                                "%s: Value of FAKES too large\n",
+                                argv[0]
+                            );
+                            exit(EXIT_FAILURE);
+                        } else {
+                            fakes = (int) converted;
+                            valid = true;
+                        }
+                    }
+                }
+                break;
             }
         }
     }
@@ -185,7 +255,8 @@ int main(int argc, char *argv[]) {
         fprintf(
             valid ? stdout : stderr,
             "Usage:\n"
-            "Encryption: %1$s FILES... -k KEYS... -o OUTPUT [-p PADDING]\n"
+            "Encryption: %1$s FILES... -k KEYS... -o OUTPUT [-p PADDING] "
+                "[-f FAKES]\n"
             "Decryption: %1$s -d FILE -k KEY -o OUTPUT\n",
             argv[0]
         ); 
@@ -202,6 +273,7 @@ int main(int argc, char *argv[]) {
             argv + keys,
             count,
             padding,
+            fakes,
             lib_context
         );
         if (!success) goto handle_error;
