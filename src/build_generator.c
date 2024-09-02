@@ -1,5 +1,4 @@
 #include "build_generator.h"
-#include "eval_function.h"
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 
@@ -88,7 +87,7 @@ int build_generator(BIGNUM *generator[],
 
     BN_RECP_CTX *modulus_context = NULL;
     BIGNUM **support_function = NULL;
-    BIGNUM *value_difference = NULL, *lambda = NULL;
+    BIGNUM **divided_diff = NULL;
     BIGNUM *temp_a = NULL, *temp_b = NULL;
 
     int success;
@@ -109,12 +108,6 @@ int build_generator(BIGNUM *generator[],
     success = BN_RECP_CTX_set(modulus_context, modulus, context);
     if (!success) goto handle_error;
 
-    value_difference = BN_new();
-    if (!value_difference) goto handle_error;
-
-    lambda = BN_new();
-    if (!lambda) goto handle_error;
-
     temp_a = BN_new();
     if (!temp_a) goto handle_error;
 
@@ -122,13 +115,20 @@ int build_generator(BIGNUM *generator[],
     if (!temp_b) goto handle_error;
 
     // Initialize support function
-    support_function 
-        = OPENSSL_zalloc(count * sizeof(*support_function));
+    support_function =
+        OPENSSL_zalloc(count * sizeof(*support_function));
     if (!support_function) goto handle_error;
+
+    divided_diff =
+        OPENSSL_zalloc(count  * sizeof(*divided_diff));
+    if (!divided_diff) goto handle_error;
 
     for (int i = 0; i < count; i++) {
         support_function[i] = BN_new();
         if (!support_function[i]) goto handle_error;
+
+        divided_diff[i] = BN_dup(y[i]);
+        if (!divided_diff[i]) goto handle_error;
     }
 
     success = BN_mod_sub(
@@ -145,54 +145,48 @@ int build_generator(BIGNUM *generator[],
 
     // Start making the generator
     for (int i = 1; i < count; i++) {
-        success = evaluate_function(
-            temp_a,
-            generator,
-            i,
-            x[i],
-            modulus,
-            modulus_context,
-            context
-        );
-        if (!success) goto handle_error;
+        // Update divided differences
+        for (int j = 0; j < count - i; j++) {
+            success = BN_mod_sub(
+                temp_a,
+                x[j + i],
+                x[j],
+                modulus,
+                context
+            );
+            if (!success) goto handle_error;
 
-        success = BN_mod_sub(
-            value_difference, 
-            y[i], 
-            temp_a,
-            modulus,
-            context
-        );
-        if (!success) goto handle_error;
+            success = (BN_mod_inverse(
+                temp_b,
+                temp_a,
+                modulus,
+                context
+            ) != NULL);
 
-        success = evaluate_function(
-            temp_a,
-            support_function,
-            i + 1,
-            x[i],
-            modulus,
-            modulus_context,
-            context
-        );
-        if (!success) goto handle_error;
+            success = BN_mod_sub(
+                temp_a,
+                divided_diff[j + 1],
+                divided_diff[j],
+                modulus,
+                context
+            );
+            if (!success) goto handle_error;
 
-        success = (BN_mod_inverse(temp_a, temp_a, modulus, context) != NULL);
-        if (!success) goto handle_error;
-
-        success = BN_mod_mul_reciprocal(
-            lambda, 
-            value_difference, 
-            temp_a, 
-            modulus_context, 
-            context
-        );
-        if (!success) goto handle_error;
+            success = BN_mod_mul_reciprocal(
+                divided_diff[j],
+                temp_a,
+                temp_b,
+                modulus_context,
+                context
+            );
+            if (!success) goto handle_error;
+        }
 
         // Update generator
         for (int j = i; j >= 0; j--) {
             success = BN_mod_mul_reciprocal(
                 temp_a,
-                lambda,
+                divided_diff[0],
                 support_function[j],
                 modulus_context,
                 context
@@ -270,16 +264,14 @@ cleanup:
     BN_free(temp_b);
     BN_free(temp_a);
     
-    BN_free(lambda);
-    BN_free(value_difference);
-
     if (support_function) {
         for (int i = 0; i < count; i++) {
             BN_free(support_function[i]);
-            support_function[i] = NULL;
+            BN_free(divided_diff[i]);
         }
     }
     OPENSSL_free(support_function);
+    OPENSSL_free(divided_diff);
 
     BN_RECP_CTX_free(modulus_context);
 
