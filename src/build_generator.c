@@ -96,7 +96,7 @@ int build_generator(BIGNUM *generator[],
     success = (BN_copy(generator[0], y[0]) != NULL);
     if (!success) goto handle_error;
 
-    if (count <= 1) return 0;
+    if (count <= 1) return return_value;
 
     // Reset generator values
     for (int i = 1; i < count; i++) {
