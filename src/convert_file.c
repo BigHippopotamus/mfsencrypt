@@ -74,7 +74,7 @@ int merge_files(char *infiles[],
 
     FILE **inputs = NULL;
     FILE *output = NULL;
-    int *filesizes = NULL;
+    off_t *filesizes = NULL;
     int max_size = 0;
     unsigned char bignum_bytes_buffer[FIELD_SIZE_BYTES];
 
@@ -84,7 +84,7 @@ int merge_files(char *infiles[],
     BIGNUM **generator = NULL;
     BIGNUM *field_mod = NULL, *value_mod = NULL;
 
-    int *padding = NULL;
+    uint64_t *padding = NULL;
 
     unsigned char (*key_hash)[HASH_SIZE] = NULL;
     unsigned int (*kmp_lps)[HASH_SIZE] = NULL;
@@ -135,8 +135,8 @@ int merge_files(char *infiles[],
         inputs[i] = fopen(infiles[i], "rb");
         if (!inputs[i]) goto handle_error;
 
-        fseek(inputs[i], 0L, SEEK_END);
-        filesizes[i] = ftell(inputs[i]);
+        fseeko(inputs[i], 0, SEEK_END);
+        filesizes[i] = ftello(inputs[i]);
         rewind(inputs[i]);
 
         if (filesizes[i] > max_size) 
@@ -147,7 +147,7 @@ int merge_files(char *infiles[],
     padding = calloc(real_count, sizeof(*padding));
     if (!padding) goto handle_error;
 
-    int required_padding = extra_padding * BLOCK_SIZE + HASH_SIZE +
+    uint64_t required_padding = extra_padding * BLOCK_SIZE + HASH_SIZE +
         (BLOCK_SIZE - max_size % BLOCK_SIZE) % BLOCK_SIZE;
     for (int i = 0; i < real_count; i++) {
         padding[i] = (max_size - filesizes[i]) + required_padding;
@@ -221,10 +221,10 @@ int merge_files(char *infiles[],
     }
 
     // Generate the output
-    uint32_t blocks = (filesizes[0] + padding[0]) / BLOCK_SIZE;
+    uint64_t blocks = (filesizes[0] + padding[0]) / BLOCK_SIZE;
     output = fopen(outfile, "wb");
 
-    uint32_t header[] = {count, blocks};
+    uint64_t header[] = {count, blocks};
     int header_len = 2;
 
     success = 
@@ -233,7 +233,7 @@ int merge_files(char *infiles[],
 
     kmp_match_status = calloc(real_count, sizeof(*kmp_match_status));
     hash_used = calloc(real_count, sizeof(*hash_used));
-    for (int i = 0; i < blocks; i++) {
+    for (uint64_t i = 0; i < blocks; i++) {
         // Generate data/padding to be used
         for (int j = 0; j < real_count; j++) {
             int old_status = kmp_match_status[j];
@@ -358,7 +358,7 @@ int merge_files(char *infiles[],
 
         // Write generator to file
         for (int j = 0; j < count; j++) {
-            int16_t coeff_size = BN_num_bytes(generator[j]);
+            int8_t coeff_size = BN_num_bytes(generator[j]);
             if (BN_is_negative(generator[j])) coeff_size *= -1;
             success = (fwrite(&coeff_size, sizeof(coeff_size), 1, output) == 1);
             if (!success) goto handle_error;
@@ -434,7 +434,7 @@ int regenerate_file(char *infile,
     FILE *output = NULL;
     unsigned char bignum_bytes_buffer[FIELD_SIZE_BYTES];
 
-    uint32_t count = 0, blocks;
+    uint64_t count = 0, blocks;
 
     BIGNUM *x = NULL, *y = NULL;
     BIGNUM **generator = NULL;
@@ -526,7 +526,7 @@ int regenerate_file(char *infile,
     int kmp_match_status = 0;
     for (int i = 0; i < blocks; i++) {
         for (int j = 0; j < count; j++) {
-            int16_t coeff_size;
+            int8_t coeff_size;
             success = (fread(
                 &coeff_size,
                 sizeof(coeff_size),

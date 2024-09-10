@@ -13,7 +13,16 @@ set(SOURCES
     src/convert_file.c
 )
 
+set(DEFINITIONS
+    _FILE_OFFSET_BITS=64
+)
+
 add_executable(mfsencrypt ${SOURCES})
+
+target_compile_definitions(mfsencrypt
+    PRIVATE
+        ${DEFINITIONS}
+)
 
 target_include_directories(mfsencrypt
     PRIVATE
