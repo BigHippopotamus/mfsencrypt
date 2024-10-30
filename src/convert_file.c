@@ -148,7 +148,7 @@ int merge_files(char *infiles[],
     if (!padding) goto handle_error;
 
     uint64_t required_padding = extra_padding * BLOCK_SIZE + HASH_SIZE +
-        (BLOCK_SIZE - max_size % BLOCK_SIZE) % BLOCK_SIZE;
+        (-max_size % BLOCK_SIZE) + BLOCK_SIZE;
     for (int i = 0; i < real_count; i++) {
         padding[i] = (max_size - filesizes[i]) + required_padding;
     }
@@ -308,8 +308,11 @@ int merge_files(char *infiles[],
                     &kmp_match_status[j]
                 );
 
-                if (hash_in_rand) {
+                bool safety_continue = (padding[j] == HASH_SIZE + BLOCK_SIZE
+                                        && kmp_match_status[j] > 0);
+                if (hash_in_rand || safety_continue) {
                     j--;
+                    kmp_match_status[j] = old_status;
                     continue;
                 }
             }

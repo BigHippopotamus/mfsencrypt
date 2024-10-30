@@ -1,4 +1,4 @@
-<h1>MultiFile Superencryption</h1>
+<h1>MultiFile Encryption</h1>
 <br />
 
 <p>A program that allows merging multiple files into one and regenerating them given the correct password</p>
@@ -15,11 +15,11 @@
   <code>cmake -S . -B build</code>
   <code>cmake --build build</code>
 </pre>
-The <code>mfsencrypt</code> executable will be generated in the <code>build/</code> directory
+The <code>mfencrypt</code> executable will be generated in the <code>build/</code> directory
 
 <h2>Encryption</h2>
 <h3>Usage<sup>*</sup>:</h3>
-<pre><code>./mfsencrypt FILES... -k KEYS... -o OUTPUT [-p PADDING] [-f FAKES]</code></pre>
+<pre><code>./mfencrypt FILES... -k KEYS... -o OUTPUT [-p PADDING] [-f FAKES]</code></pre>
 <ol>
   <li><code>FILES...</code>: The paths to the files to merge</li>
   <li><code>KEYS...</code>: The keys corresponding to each file (the number of keys must equal the number of files)</li>
@@ -29,11 +29,11 @@ The <code>mfsencrypt</code> executable will be generated in the <code>build/</co
 </ol>
 
 <h3>Example:</h3>
-<pre><code>./mfsencrypt foo.png bar.txt -k pass1 pass2 -o merged.mfsn -p 250 -f 51</code></pre>
+<pre><code>./mfencrypt foo.png bar.txt -k pass1 pass2 -o merged.mfen -p 250 -f 51</code></pre>
 
 <h2>Decryption</h2>
 <h3>Usage<sup>*</sup>:</h3>
-<pre><code>./mfsencrypt -d FILE -k KEY -o OUTPUT</code></pre>
+<pre><code>./mfencrypt -d FILE -k KEY -o OUTPUT</code></pre>
 <ol>
   <li><code>FILE</code>: The path to the merged file</li>
   <li><code>KEY</code>: The key of the file to regenerate</li>
@@ -41,7 +41,7 @@ The <code>mfsencrypt</code> executable will be generated in the <code>build/</co
 </ol>
 
 <h3>Example:</h3>
-<pre><code>./mfsencrypt -d merged.mfsn -k pass2 -o bar.txt</code></pre>
+<pre><code>./mfencrypt -d merged.mfen -k pass2 -o bar.txt</code></pre>
 
 <hr />
 <p><sup>*</sup>The order of arguments must be exactly as specified</p>
